@@ -1,6 +1,10 @@
 # Sorting Animations
 
-Full video: http://nullprogram.com/video/?v=sort-circle
+<p align="center">
+  <a href="http://nullprogram.com/video/?v=sort-circle">
+    <img alt="" title="Play video" src="https://i.imgur.com/PqHLUVm.png"/>
+  </a>
+</p>
 
 This C program produces videos for various sorting algorithms. Points
 are ordered by hue, and the distance from the center indicates a point's
@@ -23,6 +27,6 @@ The program's output is [a bunch of concatenated][how] images, one per
 frame, in [PPM format][ppm].
 
 [how]: http://nullprogram.com/blog/2017/07/02/
-[mjpegtools]: http://mjpeg.sourceforge.net/
+[mj]: http://mjpeg.sourceforge.net/
 [orig]: https://www.youtube.com/watch?v=sYd_-pAfbBw
 [ppm]: https://en.wikipedia.org/wiki/Netpbm_format
