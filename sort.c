@@ -9,13 +9,13 @@
 
 #include "font.h"
 
-#define S     800
-#define N     360
+#define S     800           // video size
+#define N     360           // number of points
 #define R0    (N / 180.0f)  // circle inner radius
 #define R1    (N / 90.0f)   // circle outer radius
 #define PAD   (N / 64)      // message padding
-#define WAIT  60
-#define PI 3.141592653589793
+#define WAIT  60            // pause in frames between sorts
+#define PI 3.141592653589793f
 
 static uint32_t
 pcg32(uint64_t *s)
