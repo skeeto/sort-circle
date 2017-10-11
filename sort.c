@@ -296,7 +296,7 @@ main(void)
         SORT_BUBBLE,
         SORT_INSERTION,
         SORT_STOOGESORT,
-        SORT_QSORT,
+        SORT_QUICKSORT,
         SORT_RADIX_8_LSD,
     } type = SORT_STOOGESORT;
 
@@ -321,7 +321,7 @@ main(void)
         case SORT_STOOGESORT:
             sort_stoogesort(array, 0, N - 1);
             break;
-        case SORT_QSORT:
+        case SORT_QUICKSORT:
             sort_quicksort(array, N);
             break;
         case SORT_RADIX_8_LSD:
