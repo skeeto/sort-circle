@@ -135,7 +135,7 @@ frame(void)
     static unsigned char buf[S * S * 3];
     memset(buf, 0, sizeof(buf));
     for (int i = 0; i < N; i++) {
-        float delta = fabsf(i - array[i]) / (N / 2.0);
+        float delta = abs(i - array[i]) / (N / 2.0);
         float x = -sinf(i * 2.0 * PI / N);
         float y = -cosf(i * 2.0 * PI / N);
         float r = S * 15.0 / 32.0 * (1.0 - delta);
