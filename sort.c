@@ -212,6 +212,40 @@ sort_quicksort(int *array, int n)
     }
 }
 
+static int
+digit(int v, int b, int d)
+{
+    for (int i = 0; i < d; i++)
+        v /= b;
+    return v % b;
+}
+
+static void
+sort_radix_lsd(int *array, int b)
+{
+    int c, total = 1;
+    for (int d = 0; total; d++) {
+        total = -1;
+        do {
+            total++;
+            c = 0;
+            for(int i = 1; i < N - 1; i += 2) {
+                if (digit(array[i], b, d) > digit(array[i + 1], b, d)) {
+                    swap(array, i, i + 1);
+                    c = 1;
+                }
+            }
+            for (int i = 0; i < N - 1; i += 2) {
+                if (digit(array[i], b, d) > digit(array[i + 1], b, d)) {
+                    swap(array, i, i + 1);
+                    c = 1;
+                }
+            }
+            frame();
+        } while (c);
+    }
+}
+
 #define SHUFFLE_DRAW  (1u << 0)
 
 static void
@@ -233,14 +267,15 @@ main(void)
         SORT_NULL,
         SORT_EVEN_ODD,
         SORT_BUBBLE,
-        SORT_QSORT
-    } type = SORT_BUBBLE;
+        SORT_QSORT,
+        SORT_RADIX_8_LSD,
+    } type = SORT_RADIX_8_LSD;
 
     for (int i = 0; i < N; i++)
         array[i] = i;
     frame();
 
-    shuffle(array, 0);
+    shuffle(array, SHUFFLE_DRAW);
 
     switch (type) {
         case SORT_NULL:
@@ -253,6 +288,9 @@ main(void)
             break;
         case SORT_QSORT:
             sort_quicksort(array, N);
+            break;
+        case SORT_RADIX_8_LSD:
+            sort_radix_lsd(array, 8);
             break;
     }
     frame();
