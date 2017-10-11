@@ -203,6 +203,23 @@ sort_insertion(int array[N])
 }
 
 static void
+sort_stoogesort(int array[N], int i, int j)
+{
+    static int c = 0;
+    if (array[i] > array[j]) {
+        swap(array, i, j);
+        if (c++ % 32 == 0)
+            frame();
+    }
+    if (j - i + 1 > 2) {
+        int t = (j - i + 1) / 3;
+        sort_stoogesort(array, i, j - t);
+        sort_stoogesort(array, i + t, j);
+        sort_stoogesort(array, i, j - t);
+    }
+}
+
+static void
 sort_quicksort(int *array, int n)
 {
     if (n > 1) {
@@ -278,9 +295,10 @@ main(void)
         SORT_EVEN_ODD,
         SORT_BUBBLE,
         SORT_INSERTION,
+        SORT_STOOGESORT,
         SORT_QSORT,
         SORT_RADIX_8_LSD,
-    } type = SORT_INSERTION;
+    } type = SORT_STOOGESORT;
 
     for (int i = 0; i < N; i++)
         array[i] = i;
@@ -299,6 +317,9 @@ main(void)
             break;
         case SORT_INSERTION:
             sort_insertion(array);
+            break;
+        case SORT_STOOGESORT:
+            sort_stoogesort(array, 0, N - 1);
             break;
         case SORT_QSORT:
             sort_quicksort(array, N);
