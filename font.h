@@ -11,7 +11,7 @@ font_value(int c, int x, int y)
     int cx = c % 16;
     int cy = (c - 32) / 16;
     int v = font[(cy * FONT_H + y) * FONT_W * 16 + (cx * FONT_W) + x];
-    return sqrt(v / 255.0f);
+    return sqrtf(v / 255.0f);
 }
 
 static const unsigned char font[] = {

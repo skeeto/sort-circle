@@ -55,9 +55,9 @@ rgb_split(unsigned long c, float *r, float *g, float *b)
 static unsigned long
 rgb_join(float r, float g, float b)
 {
-    unsigned long ir = roundf(r * r * 255.0);
-    unsigned long ig = roundf(g * g * 255.0);
-    unsigned long ib = roundf(b * b * 255.0);
+    unsigned long ir = roundf(r * r * 255.0f);
+    unsigned long ig = roundf(g * g * 255.0f);
+    unsigned long ib = roundf(b * b * 255.0f);
     return (ir << 16) | (ig << 8) | ib;
 }
 
@@ -165,12 +165,12 @@ frame(void)
     static unsigned char buf[S * S * 3];
     memset(buf, 0, sizeof(buf));
     for (int i = 0; i < N; i++) {
-        float delta = abs(i - array[i]) / (N / 2.0);
-        float x = -sinf(i * 2.0 * PI / N);
-        float y = -cosf(i * 2.0 * PI / N);
-        float r = S * 15.0 / 32.0 * (1.0 - delta);
-        float px = r * x + S / 2;
-        float py = r * y + S / 2;
+        float delta = abs(i - array[i]) / (N / 2.0f);
+        float x = -sinf(i * 2.0f * PI / N);
+        float y = -cosf(i * 2.0f * PI / N);
+        float r = S * 15.0f / 32.0f * (1.0f - delta);
+        float px = r * x + S / 2.0f;
+        float py = r * y + S / 2.0f;
         ppm_circle(buf, px, py, hue(array[i]));
     }
     if (message)
