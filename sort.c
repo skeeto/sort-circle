@@ -212,14 +212,17 @@ sort_quicksort(int *array, int n)
     }
 }
 
+#define SHUFFLE_DRAW  (1u << 0)
+
 static void
-shuffle(int array[N])
+shuffle(int array[N], unsigned flags)
 {
     uint64_t s[1] = {0};
     for (int i = N - 1; i > 0; i--) {
         uint32_t r = pcg32(s) % (i + 1);
         swap(array, i, r);
-        frame();
+        if (flags & SHUFFLE_DRAW)
+            frame();
     }
 }
 
@@ -237,7 +240,7 @@ main(void)
         array[i] = i;
     frame();
 
-    shuffle(array);
+    shuffle(array, 0);
 
     switch (type) {
         case SORT_NULL:
