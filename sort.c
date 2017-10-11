@@ -31,7 +31,7 @@ clamp(float x, float lower, float upper)
 static float
 smoothstep(float lower, float upper, float x)
 {
-    x = clamp((x - lower) / (upper - lower), 0.0f, 1.0f); 
+    x = clamp((x - lower) / (upper - lower), 0.0f, 1.0f);
     return x * x * (3.0f - 2.0f * x);
 }
 
@@ -130,7 +130,7 @@ hue(int v)
 static int array[N];
 
 static void
-frame(FILE *f)
+frame(void)
 {
     static unsigned char buf[S * S * 3];
     memset(buf, 0, sizeof(buf));
@@ -143,7 +143,7 @@ frame(FILE *f)
         float py = r * y + S / 2;
         ppm_circle(buf, px, py, hue(array[i]));
     }
-    ppm_write(buf, f);
+    ppm_write(buf, stdout);
 }
 
 static void
@@ -172,7 +172,23 @@ sort_even_odd(int array[N])
                 c = 1;
             }
         }
-        frame(stdout);
+        frame();
+    } while (c);
+}
+
+static void
+sort_bubble(int array[N])
+{
+    int c;
+    do {
+        c = 0;
+        for (int i = 1; i < N; i++) {
+            if (array[i - 1] > array[i]) {
+                swap(array, i - 1, i);
+                c = 1;
+            }
+        }
+        frame();
     } while (c);
 }
 
@@ -184,13 +200,13 @@ sort_quicksort(int *array, int n)
         for (int i = 1; i < high;) {
             if (array[0] < array[i]) {
                 swap(array, i, --high);
-                frame(stdout);
+                frame();
             } else {
                 i++;
             }
         }
         swap(array, 0, --high);
-        frame(stdout);
+        frame();
         sort_quicksort(array, high + 1);
         sort_quicksort(array + high + 1, n - high - 1);
     }
@@ -203,18 +219,23 @@ shuffle(int array[N])
     for (int i = N - 1; i > 0; i--) {
         uint32_t r = pcg32(s) % (i + 1);
         swap(array, i, r);
-        frame(stdout);
+        frame();
     }
 }
 
 int
 main(void)
 {
-    enum {SORT_NULL, SORT_EVEN_ODD, SORT_QSORT} type = SORT_EVEN_ODD;
+    enum {
+        SORT_NULL,
+        SORT_EVEN_ODD,
+        SORT_BUBBLE,
+        SORT_QSORT
+    } type = SORT_BUBBLE;
 
     for (int i = 0; i < N; i++)
         array[i] = i;
-    frame(stdout);
+    frame();
 
     shuffle(array);
 
@@ -224,9 +245,12 @@ main(void)
         case SORT_EVEN_ODD:
             sort_even_odd(array);
             break;
+        case SORT_BUBBLE:
+            sort_bubble(array);
+            break;
         case SORT_QSORT:
             sort_quicksort(array, N);
             break;
     }
-    frame(stdout);
+    frame();
 }
