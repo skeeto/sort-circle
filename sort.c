@@ -193,6 +193,16 @@ sort_bubble(int array[N])
 }
 
 static void
+sort_insertion(int array[N])
+{
+    for (int i = 1; i < N; i++) {
+        for (int j = i; j > 0 && array[j - 1] > array[j]; j--)
+            swap(array, j, j - 1);
+        frame();
+    }
+}
+
+static void
 sort_quicksort(int *array, int n)
 {
     if (n > 1) {
@@ -267,9 +277,10 @@ main(void)
         SORT_NULL,
         SORT_EVEN_ODD,
         SORT_BUBBLE,
+        SORT_INSERTION,
         SORT_QSORT,
         SORT_RADIX_8_LSD,
-    } type = SORT_RADIX_8_LSD;
+    } type = SORT_INSERTION;
 
     for (int i = 0; i < N; i++)
         array[i] = i;
@@ -285,6 +296,9 @@ main(void)
             break;
         case SORT_BUBBLE:
             sort_bubble(array);
+            break;
+        case SORT_INSERTION:
+            sort_insertion(array);
             break;
         case SORT_QSORT:
             sort_quicksort(array, N);
