@@ -136,8 +136,8 @@ frame(FILE *f)
     memset(buf, 0, sizeof(buf));
     for (int i = 0; i < N; i++) {
         float delta = fabsf(i - array[i]) / (N / 2.0);
-        float x = cosf(i * 2.0 * PI / N);
-        float y = sinf(i * 2.0 * PI / N);
+        float x = -sinf(i * 2.0 * PI / N);
+        float y = -cosf(i * 2.0 * PI / N);
         float r = S * 15.0 / 32.0 * (1.0 - delta);
         float px = r * x + S / 2;
         float py = r * y + S / 2;
@@ -210,7 +210,7 @@ shuffle(int array[N])
 int
 main(void)
 {
-    enum {SORT_NULL, SORT_EVEN_ODD, SORT_QSORT} type = SORT_QSORT;
+    enum {SORT_NULL, SORT_EVEN_ODD, SORT_QSORT} type = SORT_EVEN_ODD;
 
     for (int i = 0; i < N; i++)
         array[i] = i;
