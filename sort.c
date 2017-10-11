@@ -1,11 +1,20 @@
+#define _POSIX_C_SOURCE 2
 #include <math.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define S  800
-#define N  360
+#include <unistd.h>
+
+#include "font.h"
+
+#define S     800
+#define N     360
+#define R0    (N / 180.0f)  // circle inner radius
+#define R1    (N / 90.0f)   // circle outer radius
+#define PAD   (N / 64)      // message padding
+#define WAIT  60
 #define PI 3.141592653589793
 
 static uint32_t
@@ -80,8 +89,6 @@ ppm_get(unsigned char *buf, int x, int y)
 static void
 ppm_circle(unsigned char *buf, float x, float y, unsigned long fgc)
 {
-    #define R0 2.0f
-    #define R1 4.0f
     float fr, fg, fb;
     rgb_split(fgc, &fr, &fg, &fb);
     for (int py = floorf(y - R1 - 1); py <= ceilf(y + R1 + 1); py++) {
@@ -99,6 +106,28 @@ ppm_circle(unsigned char *buf, float x, float y, unsigned long fgc)
             float g = a * fg + (1 - a) * bg;
             float b = a * fb + (1 - a) * bb;
             ppm_set(buf, px, py, rgb_join(r, g, b));
+        }
+    }
+}
+
+static void
+ppm_char(unsigned char *buf, int c, int x, int y, unsigned long fgc)
+{
+    float fr, fg, fb;
+    rgb_split(fgc, &fr, &fg, &fb);
+    for (int dy = 0; dy < FONT_H; dy++) {
+        for (int dx = 0; dx < FONT_W; dx++) {
+            float a = font_value(c, dx, dy);
+            if (a > 0.0f) {
+                unsigned long bgc = ppm_get(buf, x + dx, y + dy);
+                float br, bg, bb;
+                rgb_split(bgc, &br, &bg, &bb);
+
+                float r = a * fr + (a - 1) * br;
+                float g = a * fg + (a - 1) * bg;
+                float b = a * fb + (a - 1) * bb;
+                ppm_set(buf, x + dx, y + dy, rgb_join(r, g, b));
+            }
         }
     }
 }
@@ -128,6 +157,7 @@ hue(int v)
 }
 
 static int array[N];
+static const char *message;
 
 static void
 frame(void)
@@ -143,6 +173,9 @@ frame(void)
         float py = r * y + S / 2;
         ppm_circle(buf, px, py, hue(array[i]));
     }
+    if (message)
+        for (int c = 0; message[c]; c++)
+            ppm_char(buf, message[c], c * FONT_W + PAD, PAD, 0xffffffUL);
     ppm_write(buf, stdout);
 }
 
@@ -155,7 +188,23 @@ swap(int array[N], int a, int b)
 }
 
 static void
-sort_even_odd(int array[N])
+sort_bubble(int array[N])
+{
+    int c;
+    do {
+        c = 0;
+        for (int i = 1; i < N; i++) {
+            if (array[i - 1] > array[i]) {
+                swap(array, i - 1, i);
+                c = 1;
+            }
+        }
+        frame();
+    } while (c);
+}
+
+static void
+sort_odd_even(int array[N])
 {
     int c;
     do {
@@ -169,22 +218,6 @@ sort_even_odd(int array[N])
         for (int i = 0; i < N - 1; i += 2) {
             if (array[i] > array[i + 1]) {
                 swap(array, i, i + 1);
-                c = 1;
-            }
-        }
-        frame();
-    } while (c);
-}
-
-static void
-sort_bubble(int array[N])
-{
-    int c;
-    do {
-        c = 0;
-        for (int i = 1; i < N; i++) {
-            if (array[i - 1] > array[i]) {
-                swap(array, i - 1, i);
                 c = 1;
             }
         }
@@ -227,7 +260,8 @@ sort_quicksort(int *array, int n)
         for (int i = 1; i < high;) {
             if (array[0] < array[i]) {
                 swap(array, i, --high);
-                frame();
+                if (n > 12)
+                    frame();
             } else {
                 i++;
             }
@@ -276,9 +310,9 @@ sort_radix_lsd(int *array, int b)
 #define SHUFFLE_DRAW  (1u << 0)
 
 static void
-shuffle(int array[N], unsigned flags)
+shuffle(int array[N], uint64_t seed, unsigned flags)
 {
-    uint64_t s[1] = {0};
+    uint64_t s[1] = {seed};
     for (int i = N - 1; i > 0; i--) {
         uint32_t r = pcg32(s) % (i + 1);
         swap(array, i, r);
@@ -287,30 +321,39 @@ shuffle(int array[N], unsigned flags)
     }
 }
 
-int
-main(void)
+enum sort {
+    SORT_NULL,
+    SORT_BUBBLE,
+    SORT_ODD_EVEN,
+    SORT_INSERTION,
+    SORT_STOOGESORT,
+    SORT_QUICKSORT,
+    SORT_RADIX_8_LSD,
+
+    SORTS_TOTAL
+};
+
+static const char *const sort_names[] = {
+    [SORT_ODD_EVEN] = "Odd-even",
+    [SORT_BUBBLE] = "Bubble",
+    [SORT_INSERTION] = "Insertion",
+    [SORT_STOOGESORT] = "Stoogesort",
+    [SORT_QUICKSORT] = "Quicksort",
+    [SORT_RADIX_8_LSD] = "Radix LSD (base 8)",
+};
+
+static void
+run_sort(enum sort type)
 {
-    enum {
-        SORT_NULL,
-        SORT_EVEN_ODD,
-        SORT_BUBBLE,
-        SORT_INSERTION,
-        SORT_STOOGESORT,
-        SORT_QUICKSORT,
-        SORT_RADIX_8_LSD,
-    } type = SORT_STOOGESORT;
-
-    for (int i = 0; i < N; i++)
-        array[i] = i;
-    frame();
-
-    shuffle(array, SHUFFLE_DRAW);
-
+    if (type > 0 && type < SORTS_TOTAL)
+        message = sort_names[type];
+    else
+        message = 0;
     switch (type) {
         case SORT_NULL:
             break;
-        case SORT_EVEN_ODD:
-            sort_even_odd(array);
+        case SORT_ODD_EVEN:
+            sort_odd_even(array);
             break;
         case SORT_BUBBLE:
             sort_bubble(array);
@@ -327,6 +370,61 @@ main(void)
         case SORT_RADIX_8_LSD:
             sort_radix_lsd(array, 8);
             break;
+        case SORTS_TOTAL:
+            break;
     }
     frame();
+}
+
+int
+main(int argc, char **argv)
+{
+    for (int i = 0; i < N; i++)
+        array[i] = i;
+
+    int sorts = 0;
+    int quiet = 0;
+    uint64_t seed = 0;
+
+    int option;
+    while ((option = getopt(argc, argv, "hqs:wx:")) != -1) {
+        switch (option) {
+            case 'h':
+                printf("usage: %s -h -q -s<n> -w<n> -x<n>\n", argv[0]);
+                for (int i = 1; i < SORTS_TOTAL; i++)
+                    printf("  %d: %s\n", i, sort_names[i]);
+                exit(EXIT_SUCCESS);
+            case 'q':
+                quiet = 1;
+                break;
+            case 's':
+                sorts++;
+                message = "Shuffle";
+                frame();
+                shuffle(array, seed, quiet ? 0 : SHUFFLE_DRAW);
+                run_sort(atoi(optarg));
+                break;
+            case 'w': {
+                int n = atoi(optarg);
+                for (int i = 0; i < n; i++)
+                    frame();
+            } break;
+            case 'x':
+                seed = strtoull(optarg, 0, 16);
+                break;
+            default:
+                exit(EXIT_FAILURE);
+        }
+    }
+
+    if (!sorts) {
+        frame();
+        for (int i = 1; i < SORTS_TOTAL; i++) {
+            message = "Shuffle";
+            shuffle(array, seed, quiet ? 0 : SHUFFLE_DRAW);
+            run_sort(i);
+            for (int i = 0; i < WAIT; i++)
+                frame();
+        }
+    }
 }
