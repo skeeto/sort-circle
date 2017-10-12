@@ -2,6 +2,7 @@
 #include <math.h>
 #include <errno.h>
 #include <stdio.h>
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,7 +19,7 @@
 #define WAIT  1             // pause in seconds between sorts
 #define HZ    44100         // audio sample rate
 #define FPS   60            // output framerate
-#define MINHZ 80            // lowest tone
+#define MINHZ 20            // lowest tone
 #define MAXHZ 1000          // highest tone
 #define PI 3.141592653589793f
 
@@ -214,6 +215,7 @@ frame(void)
 
     /* Output audio */
     if (wav) {
+        int nsamples = HZ / FPS;
         static float samples[HZ / FPS];
         memset(samples, 0, sizeof(samples));
 
@@ -226,16 +228,18 @@ frame(void)
         for (int i = 0; i < N; i++) {
             if (swaps[i]) {
                 float hz = i * (MAXHZ - MINHZ) / (float)N + MINHZ;
-                for (int j = 0; j < HZ / FPS; j++) {
-                    float u = 1 - j / (float)(HZ / FPS - 1);
-                    float v = sinf(j * 2 * PI / HZ * hz) * u;
+                for (int j = 0; j < nsamples; j++) {
+                    float u = 1.0f - j / (float)(nsamples - 1);
+                    float parabola = 1.0f - (u * 2 - 1) * (u * 2 - 1);
+                    float envelope = parabola * parabola * parabola;
+                    float v = sinf(j * 2.0f * PI / HZ * hz) * envelope;
                     samples[j] += swaps[i] * v / voices;
                 }
             }
         }
 
         /* Write out 16-bit samples */
-        for (int i = 0; i < HZ / FPS; i++) {
+        for (int i = 0; i < nsamples; i++) {
             int s = samples[i] * 0x7fff;
             emit_u16le(s, wav);
         }
@@ -246,13 +250,13 @@ frame(void)
 }
 
 static void
-swap(int array[N], int a, int b)
+swap(int a[N], int i, int j)
 {
-    int tmp = array[a];
-    array[a] = array[b];
-    array[b] = tmp;
-    swaps[a]++;
-    swaps[b]++;
+    int tmp = a[i];
+    a[i] = a[j];
+    a[j] = tmp;
+    swaps[(a - array) + i]++;
+    swaps[(a - array) + j]++;
 }
 
 static void
