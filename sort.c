@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 2
 #include <math.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -14,7 +15,11 @@
 #define R0    (N / 180.0f)  // circle inner radius
 #define R1    (N / 90.0f)   // circle outer radius
 #define PAD   (N / 64)      // message padding
-#define WAIT  60            // pause in frames between sorts
+#define WAIT  1             // pause in seconds between sorts
+#define HZ    44100         // audio sample rate
+#define FPS   60            // output framerate
+#define MINHZ 80            // lowest tone
+#define MAXHZ 1000          // highest tone
 #define PI 3.141592653589793f
 
 static uint32_t
@@ -25,6 +30,31 @@ pcg32(uint64_t *s)
     *s = *s * m + a;
     int shift = 29 - (*s >> 61);
     return *s >> shift;
+}
+
+static void
+emit_u32le(unsigned long v, FILE *f)
+{
+    fputc((v >>  0) & 0xff, f);
+    fputc((v >>  8) & 0xff, f);
+    fputc((v >> 16) & 0xff, f);
+    fputc((v >> 24) & 0xff, f);
+}
+
+static void
+emit_u32be(unsigned long v, FILE *f)
+{
+    fputc((v >> 24) & 0xff, f);
+    fputc((v >> 16) & 0xff, f);
+    fputc((v >>  8) & 0xff, f);
+    fputc((v >>  0) & 0xff, f);
+}
+
+static void
+emit_u16le(unsigned v, FILE *f)
+{
+    fputc((v >> 0) & 0xff, f);
+    fputc((v >> 8) & 0xff, f);
 }
 
 static float
@@ -159,7 +189,9 @@ hue(int v)
 }
 
 static int array[N];
+static int swaps[N];
 static const char *message;
+static FILE *wav;
 
 static void
 frame(void)
@@ -179,6 +211,38 @@ frame(void)
         for (int c = 0; message[c]; c++)
             ppm_char(buf, message[c], c * FONT_W + PAD, PAD, 0xffffffUL);
     ppm_write(buf, stdout);
+
+    /* Output audio */
+    if (wav) {
+        static float samples[HZ / FPS];
+        memset(samples, 0, sizeof(samples));
+
+        /* How many voices to mix? */
+        int voices = 0;
+        for (int i = 0; i < N; i++)
+            voices += swaps[i];
+
+        /* Generate each voice */
+        for (int i = 0; i < N; i++) {
+            if (swaps[i]) {
+                float hz = i * (MAXHZ - MINHZ) / (float)N + MINHZ;
+                for (int j = 0; j < HZ / FPS; j++) {
+                    float u = 1 - j / (float)(HZ / FPS - 1);
+                    float v = sinf(j * 2 * PI / HZ * hz) * u;
+                    samples[j] += swaps[i] * v / voices;
+                }
+            }
+        }
+
+        /* Write out 16-bit samples */
+        for (int i = 0; i < HZ / FPS; i++) {
+            int s = samples[i] * 0x7fff;
+            emit_u16le(s, wav);
+        }
+        fflush(wav);
+    }
+
+    memset(swaps, 0, sizeof(swaps));
 }
 
 static void
@@ -187,6 +251,8 @@ swap(int array[N], int a, int b)
     int tmp = array[a];
     array[a] = array[b];
     array[b] = tmp;
+    swaps[a]++;
+    swaps[b]++;
 }
 
 static void
@@ -382,10 +448,34 @@ run_sort(enum sort type)
     frame();
 }
 
+static FILE *
+wav_init(const char *file)
+{
+    FILE *f = fopen(file, "wb");
+    if (f) {
+        emit_u32be(0x52494646UL, f); // "RIFF"
+        emit_u32le(0xffffffffUL, f); // file length
+        emit_u32be(0x57415645UL, f); // "WAVE"
+        emit_u32be(0x666d7420UL, f); // "fmt "
+        emit_u32le(16,           f); // struct size
+        emit_u16le(1,            f); // PCM
+        emit_u16le(1,            f); // mono
+        emit_u32le(HZ,           f); // sample rate (i.e. 44.1 kHz)
+        emit_u32le(HZ * 2,       f); // byte rate
+        emit_u16le(2,            f); // block size
+        emit_u16le(16,           f); // bits per sample
+        emit_u32be(0x64617461UL, f); // "data"
+        emit_u32le(0xffffffffUL, f); // byte length
+    }
+    return f;
+}
+
 static void
 usage(const char *name, FILE *f)
 {
-    fprintf(f, "usage: %s [-h] [-q] [s N] [-w N] [-x HEX] [-y]\n", name);
+    fprintf(f, "usage: %s [-a file] [-h] [-q] [s N] [-w N] [-x HEX] [-y]\n",
+            name);
+    fprintf(f, "  -a       name of audio output (WAV)\n");
     fprintf(f, "  -h       print this message\n");
     fprintf(f, "  -q       don't draw the shuffle\n");
     fprintf(f, "  -s N     animate sort number N (see below)\n");
@@ -408,9 +498,17 @@ main(int argc, char **argv)
     uint64_t seed = 0;
 
     int option;
-    while ((option = getopt(argc, argv, "hqs:w:x:y")) != -1) {
+    while ((option = getopt(argc, argv, "a:hqs:w:x:y")) != -1) {
         int n;
         switch (option) {
+            case 'a':
+                wav = wav_init(optarg);
+                if (!wav) {
+                    fprintf(stderr, "%s: %s: %s\n",
+                            argv[0], strerror(errno), optarg);
+                    exit(EXIT_FAILURE);
+                }
+                break;
             case 'h':
                 usage(argv[0], stdout);
                 exit(EXIT_SUCCESS);
@@ -445,7 +543,7 @@ main(int argc, char **argv)
         for (int i = 1; i < SORTS_TOTAL; i++) {
             shuffle(array, &seed, flags);
             run_sort(i);
-            for (int i = 0; i < WAIT; i++)
+            for (int i = 0; i < WAIT * FPS; i++)
                 frame();
         }
     }
