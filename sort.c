@@ -383,14 +383,15 @@ run_sort(enum sort type)
 }
 
 static void
-usage(const char *progname, FILE *f)
+usage(const char *name, FILE *f)
 {
-    fprintf(f, "usage: %s [-h] [-q] [s N] [-w N] [-x HEX]\n", progname);
+    fprintf(f, "usage: %s [-h] [-q] [s N] [-w N] [-x HEX] [-y]\n", name);
     fprintf(f, "  -h       print this message\n");
     fprintf(f, "  -q       don't draw the shuffle\n");
     fprintf(f, "  -s N     animate sort number N (see below)\n");
     fprintf(f, "  -w N     insert a delay of N frames\n");
     fprintf(f, "  -x HEX   use HEX as a 64-bit seed for shuffling\n");
+    fprintf(f, "  -y       slow down shuffle animation\n");
     fprintf(f, "\n");
     for (int i = 1; i < SORTS_TOTAL; i++)
         fprintf(f, "  %d: %s\n", i, sort_names[i]);
