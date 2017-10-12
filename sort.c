@@ -311,6 +311,7 @@ sort_radix_lsd(int *array, int b)
 }
 
 #define SHUFFLE_DRAW  (1u << 0)
+#define SHUFFLE_FAST  (1u << 1)
 
 static void
 shuffle(int array[N], uint64_t *rng, unsigned flags)
@@ -319,8 +320,10 @@ shuffle(int array[N], uint64_t *rng, unsigned flags)
     for (int i = N - 1; i > 0; i--) {
         uint32_t r = pcg32(rng) % (i + 1);
         swap(array, i, r);
-        if (flags & SHUFFLE_DRAW)
+        if (flags & SHUFFLE_DRAW) {
+            if (!(flags & SHUFFLE_FAST) || i % 2)
             frame();
+        }
     }
 }
 
@@ -379,42 +382,59 @@ run_sort(enum sort type)
     frame();
 }
 
+static void
+usage(const char *progname, FILE *f)
+{
+    fprintf(f, "usage: %s [-h] [-q] [s N] [-w N] [-x HEX]\n", progname);
+    fprintf(f, "  -h       print this message\n");
+    fprintf(f, "  -q       don't draw the shuffle\n");
+    fprintf(f, "  -s N     animate sort number N (see below)\n");
+    fprintf(f, "  -w N     insert a delay of N frames\n");
+    fprintf(f, "  -x HEX   use HEX as a 64-bit seed for shuffling\n");
+    fprintf(f, "\n");
+    for (int i = 1; i < SORTS_TOTAL; i++)
+        fprintf(f, "  %d: %s\n", i, sort_names[i]);
+}
+
 int
 main(int argc, char **argv)
 {
     for (int i = 0; i < N; i++)
         array[i] = i;
-    frame();
 
     int sorts = 0;
-    int quiet = 0;
+    unsigned flags = SHUFFLE_DRAW | SHUFFLE_FAST;
     uint64_t seed = 0;
 
     int option;
-    while ((option = getopt(argc, argv, "hqs:wx:")) != -1) {
+    while ((option = getopt(argc, argv, "hqs:w:x:y")) != -1) {
+        int n;
         switch (option) {
             case 'h':
-                printf("usage: %s -h -q -s<n> -w<n> -x<n>\n", argv[0]);
-                for (int i = 1; i < SORTS_TOTAL; i++)
-                    printf("  %d: %s\n", i, sort_names[i]);
+                usage(argv[0], stdout);
                 exit(EXIT_SUCCESS);
             case 'q':
-                quiet = 1;
+                flags &= ~SHUFFLE_DRAW;
                 break;
             case 's':
                 sorts++;
-                shuffle(array, &seed, quiet ? 0 : SHUFFLE_DRAW);
+                frame();
+                shuffle(array, &seed, flags);
                 run_sort(atoi(optarg));
                 break;
-            case 'w': {
-                int n = atoi(optarg);
+            case 'w':
+                n = atoi(optarg);
                 for (int i = 0; i < n; i++)
                     frame();
-            } break;
+                break;
             case 'x':
                 seed = strtoull(optarg, 0, 16);
                 break;
+            case 'y':
+                flags &= ~SHUFFLE_FAST;
+                break;
             default:
+                usage(argv[0], stderr);
                 exit(EXIT_FAILURE);
         }
     }
@@ -422,7 +442,7 @@ main(int argc, char **argv)
     /* If no sorts selected, run all of them in order */
     if (!sorts) {
         for (int i = 1; i < SORTS_TOTAL; i++) {
-            shuffle(array, &seed, quiet ? 0 : SHUFFLE_DRAW);
+            shuffle(array, &seed, flags);
             run_sort(i);
             for (int i = 0; i < WAIT; i++)
                 frame();
