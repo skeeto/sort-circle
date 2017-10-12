@@ -313,11 +313,11 @@ sort_radix_lsd(int *array, int b)
 #define SHUFFLE_DRAW  (1u << 0)
 
 static void
-shuffle(int array[N], uint64_t seed, unsigned flags)
+shuffle(int array[N], uint64_t *rng, unsigned flags)
 {
-    uint64_t s[1] = {seed};
+    message = "Fisher-Yates";
     for (int i = N - 1; i > 0; i--) {
-        uint32_t r = pcg32(s) % (i + 1);
+        uint32_t r = pcg32(rng) % (i + 1);
         swap(array, i, r);
         if (flags & SHUFFLE_DRAW)
             frame();
@@ -384,6 +384,7 @@ main(int argc, char **argv)
 {
     for (int i = 0; i < N; i++)
         array[i] = i;
+    frame();
 
     int sorts = 0;
     int quiet = 0;
@@ -402,9 +403,7 @@ main(int argc, char **argv)
                 break;
             case 's':
                 sorts++;
-                message = "Shuffle";
-                frame();
-                shuffle(array, seed, quiet ? 0 : SHUFFLE_DRAW);
+                shuffle(array, &seed, quiet ? 0 : SHUFFLE_DRAW);
                 run_sort(atoi(optarg));
                 break;
             case 'w': {
@@ -422,10 +421,8 @@ main(int argc, char **argv)
 
     /* If no sorts selected, run all of them in order */
     if (!sorts) {
-        frame();
         for (int i = 1; i < SORTS_TOTAL; i++) {
-            message = "Shuffle";
-            shuffle(array, seed, quiet ? 0 : SHUFFLE_DRAW);
+            shuffle(array, &seed, quiet ? 0 : SHUFFLE_DRAW);
             run_sort(i);
             for (int i = 0; i < WAIT; i++)
                 frame();
