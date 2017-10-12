@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <unistd.h>
+#include <unistd.h>  // getopt(3)
 
 #include "font.h"
 
@@ -44,6 +44,7 @@ smoothstep(float lower, float upper, float x)
     return x * x * (3.0f - 2.0f * x);
 }
 
+/* Convert 24-bit color to pseudo sRGB. */
 static void
 rgb_split(unsigned long c, float *r, float *g, float *b)
 {
@@ -52,6 +53,7 @@ rgb_split(unsigned long c, float *r, float *g, float *b)
     *b = sqrtf((c & 0xff) / 255.0f);
 }
 
+/* Convert pseudo sRGB to 24-bit color. */
 static unsigned long
 rgb_join(float r, float g, float b)
 {
@@ -287,6 +289,7 @@ sort_radix_lsd(int *array, int b)
     int c, total = 1;
     for (int d = 0; total; d++) {
         total = -1;
+        /* Odd-even sort on the current digit */
         do {
             total++;
             c = 0;
@@ -417,6 +420,7 @@ main(int argc, char **argv)
         }
     }
 
+    /* If no sorts selected, run all of them in order */
     if (!sorts) {
         frame();
         for (int i = 1; i < SORTS_TOTAL; i++) {
