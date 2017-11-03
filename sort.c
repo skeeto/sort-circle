@@ -75,22 +75,22 @@ smoothstep(float lower, float upper, float x)
     return x * x * (3.0f - 2.0f * x);
 }
 
-/* Convert 24-bit color to pseudo sRGB. */
+/* Convert 24-bit color to RGB. */
 static void
 rgb_split(unsigned long c, float *r, float *g, float *b)
 {
-    *r = sqrtf((c >> 16) / 255.0f);
-    *g = sqrtf(((c >> 8) & 0xff) / 255.0f);
-    *b = sqrtf((c & 0xff) / 255.0f);
+    *r = ((c >> 16) / 255.0f);
+    *g = (((c >> 8) & 0xff) / 255.0f);
+    *b = ((c & 0xff) / 255.0f);
 }
 
-/* Convert pseudo sRGB to 24-bit color. */
+/* Convert RGB to 24-bit color. */
 static unsigned long
 rgb_join(float r, float g, float b)
 {
-    unsigned long ir = roundf(r * r * 255.0f);
-    unsigned long ig = roundf(g * g * 255.0f);
-    unsigned long ib = roundf(b * b * 255.0f);
+    unsigned long ir = roundf(r * 255.0f);
+    unsigned long ig = roundf(g * 255.0f);
+    unsigned long ib = roundf(b * 255.0f);
     return (ir << 16) | (ig << 8) | ib;
 }
 
