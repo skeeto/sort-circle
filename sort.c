@@ -13,9 +13,9 @@
 
 #define S     800           // video size
 #define N     360           // number of points
-#define R0    (N / 180.0f)  // circle inner radius
-#define R1    (N / 90.0f)   // circle outer radius
-#define PAD   (N / 64)      // message padding
+#define R0    (S / 400.0f)  // circle inner radius
+#define R1    (S / 200.0f)  // circle outer radius
+#define PAD   (S / 128)     // message padding
 #define WAIT  1             // pause in seconds between sorts
 #define HZ    44100         // audio sample rate
 #define FPS   60            // output framerate
