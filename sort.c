@@ -12,9 +12,9 @@
 #include "font.h"
 
 #define S     800           // video size
-#define N     360           // number of points
-#define R0    (S / 400.0f)  // circle inner radius
-#define R1    (S / 200.0f)  // circle outer radius
+#define N     360           // number of dots
+#define R0    (S / 400.0f)  // dot inner radius
+#define R1    (S / 200.0f)  // dot outer radius
 #define PAD   (S / 128)     // message padding
 #define WAIT  1             // pause in seconds between sorts
 #define HZ    44100         // audio sample rate
@@ -120,13 +120,19 @@ ppm_get(unsigned char *buf, int x, int y)
 }
 
 static void
-ppm_circle(unsigned char *buf, float x, float y, unsigned long fgc)
+ppm_dot(unsigned char *buf, float x, float y, unsigned long fgc)
 {
     float fr, fg, fb;
     rgb_split(fgc, &fr, &fg, &fb);
-    for (int py = floorf(y - R1 - 1); py <= ceilf(y + R1 + 1); py++) {
+
+    int miny = floorf(y - R1 - 1);
+    int maxy = ceilf(y + R1 + 1);
+    int minx = floorf(x - R1 - 1);
+    int maxx = ceilf(x + R1 + 1);
+
+    for (int py = miny; py <= maxy; py++) {
         float dy = py - y;
-        for (int px = floorf(x - R1 - 1); px <= ceilf(x + R1 + 1); px++) {
+        for (int px = minx; px <= maxx; px++) {
             float dx = px - x;
             float d = sqrtf(dy * dy + dx * dx);
             float a = smoothstep(R1, R0, d);
@@ -206,7 +212,7 @@ frame(void)
         float r = S * 15.0f / 32.0f * (1.0f - delta);
         float px = r * x + S / 2.0f;
         float py = r * y + S / 2.0f;
-        ppm_circle(buf, px, py, hue(array[i]));
+        ppm_dot(buf, px, py, hue(array[i]));
     }
     if (message)
         for (int c = 0; message[c]; c++)
