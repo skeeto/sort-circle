@@ -314,7 +314,7 @@ sort_insertion(int array[N])
 }
 
 static void
-sort_stoogesort(int array[N], int i, int j)
+sort_stoogesort(int *array, int i, int j)
 {
     static int c = 0;
     if (array[i] > array[j]) {
@@ -360,7 +360,7 @@ digit(int v, int b, int d)
 }
 
 static void
-sort_radix_lsd(int *array, int b)
+sort_radix_lsd(int array[N], int b)
 {
     int c, total = 1;
     for (int d = 0; total; d++) {
