@@ -1,19 +1,6 @@
 #define FONT_W 16
 #define FONT_H 33
 
-static const unsigned char font[];
-
-static float
-font_value(int c, int x, int y)
-{
-    if (c < 32 || c > 127)
-        return 0.0f;
-    int cx = c % 16;
-    int cy = (c - 32) / 16;
-    int v = font[(cy * FONT_H + y) * FONT_W * 16 + (cx * FONT_W) + x];
-    return sqrtf(v / 255.0f);
-}
-
 static const unsigned char font[] = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

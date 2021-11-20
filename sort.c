@@ -1,15 +1,12 @@
-#define _POSIX_C_SOURCE 200112L
-#include <math.h>
-#include <errno.h>
-#include <stdio.h>
 #include <assert.h>
+#include <ctype.h>
+#include <errno.h>
+#include <math.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <unistd.h>  // getopt(3)
-
-#include "font.h"
 
 #define S     800           // video size
 #define N     360           // number of dots
@@ -94,12 +91,23 @@ rgb_join(float r, float g, float b)
     return (ir << 16) | (ig << 8) | ib;
 }
 
+static float
+font_value(int c, int x, int y)
+{
+    #include "font.h"
+    if (c < 32 || c > 127)
+        return 0.0f;
+    int cx = c % 16;
+    int cy = (c - 32) / 16;
+    int v = font[(cy * FONT_H + y) * FONT_W * 16 + (cx * FONT_W) + x];
+    return sqrtf(v / 255.0f);
+}
+
 static void
 ppm_write(const unsigned char *buf, FILE *f)
 {
     fprintf(f, "P6\n%d %d\n255\n", S, S);
     fwrite(buf, S * 3, S, f);
-    fflush(f);
 }
 
 static void
@@ -218,6 +226,10 @@ frame(void)
         for (int c = 0; message[c]; c++)
             ppm_char(buf, message[c], c * FONT_W + PAD, PAD, 0xffffffUL);
     ppm_write(buf, stdout);
+    if (ferror(stdout)) {
+        fputs("sort: error writing video frame\n", stderr);
+        exit(1);
+    }
 
     /* Output audio */
     if (wav) {
@@ -249,7 +261,10 @@ frame(void)
             int s = samples[i] * 0x7fff;
             emit_u16le(s, wav);
         }
-        fflush(wav);
+        if (ferror(wav)) {
+            fputs("sort: error writing audio frame\n", stderr);
+            exit(1);
+        }
     }
 
     memset(swaps, 0, sizeof(swaps));
@@ -497,9 +512,75 @@ usage(const char *name, FILE *f)
         fprintf(f, "  %d: %s\n", i, sort_names[i]);
 }
 
+
+static int xoptind = 1;
+static int xopterr = 1;
+static int xoptopt;
+static char *xoptarg;
+
+static int
+xgetopt(int argc, char * const argv[], const char *optstring)
+{
+    static int optpos = 1;
+    const char *arg;
+    (void)argc;
+
+    /* Reset? */
+    if (xoptind == 0) {
+        xoptind = 1;
+        optpos = 1;
+    }
+
+    arg = argv[xoptind];
+    if (arg && strcmp(arg, "--") == 0) {
+        xoptind++;
+        return -1;
+    } else if (!arg || arg[0] != '-' || !isalnum(arg[1])) {
+        return -1;
+    } else {
+        const char *opt = strchr(optstring, arg[optpos]);
+        xoptopt = arg[optpos];
+        if (!opt) {
+            if (xopterr && *optstring != ':')
+                fprintf(stderr, "%s: illegal option: %c\n", argv[0], xoptopt);
+            return '?';
+        } else if (opt[1] == ':') {
+            if (arg[optpos + 1]) {
+                xoptarg = (char *)arg + optpos + 1;
+                xoptind++;
+                optpos = 1;
+                return xoptopt;
+            } else if (argv[xoptind + 1]) {
+                xoptarg = (char *)argv[xoptind + 1];
+                xoptind += 2;
+                optpos = 1;
+                return xoptopt;
+            } else {
+                if (xopterr && *optstring != ':')
+                    fprintf(stderr,
+                            "%s: option requires an argument: %c\n",
+                            argv[0], xoptopt);
+                return *optstring == ':' ? ':' : '?';
+            }
+        } else {
+            if (!arg[++optpos]) {
+                xoptind++;
+                optpos = 1;
+            }
+            return xoptopt;
+        }
+    }
+}
+
 int
 main(int argc, char **argv)
 {
+    #ifdef _WIN32
+    /* Set stdin/stdout to binary mode. */
+    int _setmode(int, int);
+    _setmode(1, 0x8000);
+    #endif
+
     for (int i = 0; i < N; i++)
         array[i] = i;
 
@@ -508,14 +589,14 @@ main(int argc, char **argv)
     uint64_t seed = 0;
 
     int option;
-    while ((option = getopt(argc, argv, "a:hqs:w:x:y")) != -1) {
+    while ((option = xgetopt(argc, argv, "a:hqs:w:x:y")) != -1) {
         int n;
         switch (option) {
             case 'a':
-                wav = wav_init(optarg);
+                wav = wav_init(xoptarg);
                 if (!wav) {
                     fprintf(stderr, "%s: %s: %s\n",
-                            argv[0], strerror(errno), optarg);
+                            argv[0], strerror(errno), xoptarg);
                     exit(EXIT_FAILURE);
                 }
                 break;
@@ -529,15 +610,15 @@ main(int argc, char **argv)
                 sorts++;
                 frame();
                 shuffle(array, &seed, flags);
-                run_sort(atoi(optarg));
+                run_sort(atoi(xoptarg));
                 break;
             case 'w':
-                n = atoi(optarg);
+                n = atoi(xoptarg);
                 for (int i = 0; i < n; i++)
                     frame();
                 break;
             case 'x':
-                seed = strtoull(optarg, 0, 16);
+                seed = strtoull(xoptarg, 0, 16);
                 break;
             case 'y':
                 flags &= ~SHUFFLE_FAST;
