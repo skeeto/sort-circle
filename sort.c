@@ -162,9 +162,9 @@ ppm_char(unsigned char *buf, int c, int x, int y, unsigned long fgc)
                 float br, bg, bb;
                 rgb_split(bgc, &br, &bg, &bb);
 
-                float r = a * fr + (a - 1) * br;
-                float g = a * fg + (a - 1) * bg;
-                float b = a * fb + (a - 1) * bb;
+                float r = a * fr + (1 - a) * br;
+                float g = a * fg + (1 - a) * bg;
+                float b = a * fb + (1 - a) * bb;
                 ppm_set(buf, x + dx, y + dy, rgb_join(r, g, b));
             }
         }
